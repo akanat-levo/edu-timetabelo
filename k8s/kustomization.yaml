@@ -1,0 +1,20 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace.yaml
+  - backend.yaml
+  - frontend.yaml
+  - ingress.yaml
+
+# Set your Docker Hub images + tag in one place:
+#   kubectl apply -k k8s/
+# Then override images without editing files:
+#   (cd k8s && kustomize edit set image \
+#      DOCKERHUB_USER/edu-timetabelo-backend=YOURUSER/edu-timetabelo-backend:v1 \
+#      DOCKERHUB_USER/edu-timetabelo-frontend=YOURUSER/edu-timetabelo-frontend:v1)
+images:
+  - name: DOCKERHUB_USER/edu-timetabelo-backend
+    newTag: latest
+  - name: DOCKERHUB_USER/edu-timetabelo-frontend
+    newTag: latest

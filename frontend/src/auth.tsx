@@ -11,13 +11,19 @@ import { api, clearToken, getToken, setToken } from "./api";
 interface User {
   id: number;
   email: string;
+  display_name: string;
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string) => Promise<void>;
+  register: (
+    email: string,
+    password: string,
+    displayName: string,
+    inviteCode: string
+  ) => Promise<void>;
   logout: () => void;
 }
 
@@ -35,7 +41,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     try {
       const me = await api.me();
-      setUser({ id: me.id, email: me.email });
+      setUser({ id: me.id, email: me.email, display_name: me.display_name });
     } catch {
       clearToken();
       setUser(null);
@@ -52,15 +58,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { access_token } = await api.login(email, password);
     setToken(access_token);
     const me = await api.me();
-    setUser({ id: me.id, email: me.email });
+    setUser({ id: me.id, email: me.email, display_name: me.display_name });
   }, []);
 
-  const register = useCallback(async (email: string, password: string) => {
-    const { access_token } = await api.register(email, password);
-    setToken(access_token);
-    const me = await api.me();
-    setUser({ id: me.id, email: me.email });
-  }, []);
+  const register = useCallback(
+    async (
+      email: string,
+      password: string,
+      displayName: string,
+      inviteCode: string
+    ) => {
+      const { access_token } = await api.register(
+        email,
+        password,
+        displayName,
+        inviteCode
+      );
+      setToken(access_token);
+      const me = await api.me();
+      setUser({ id: me.id, email: me.email, display_name: me.display_name });
+    },
+    []
+  );
 
   const logout = useCallback(() => {
     clearToken();

@@ -22,25 +22,44 @@ def _to_out(entry: Entry) -> EntryOut:
         start_time=entry.start_time,
         end_time=entry.end_time,
         sprint_id=entry.sprint_id,
+        assignee_id=entry.assignee_id,
         completed=entry.completed,
         day_of_week=entry.entry_date.weekday(),
         created_at=entry.created_at,
+        owner_id=entry.owner_id,
+        creator_name=entry.creator.display_name or entry.creator.email,
+        assignee_name=(
+            (entry.assignee.display_name or entry.assignee.email)
+            if entry.assignee
+            else None
+        ),
     )
 
 
-def _get_owned_entry(entry_id: int, user: User, db: Session) -> Entry:
+def _get_entry(entry_id: int, db: Session) -> Entry:
     entry = db.get(Entry, entry_id)
-    if entry is None or entry.owner_id != user.id:
+    if entry is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Entry not found.")
     return entry
 
 
-def _validate_sprint(sprint_id: int | None, user: User, db: Session) -> None:
+def _can_modify(entry: Entry, user: User) -> bool:
+    # Creator or current assignee may change a task.
+    return user.id in {entry.owner_id, entry.assignee_id}
+
+
+def _validate_sprint(sprint_id: int | None, db: Session) -> None:
     if sprint_id is None:
         return
-    sprint = db.get(Sprint, sprint_id)
-    if sprint is None or sprint.owner_id != user.id:
+    if db.get(Sprint, sprint_id) is None:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid sprint_id.")
+
+
+def _validate_assignee(assignee_id: int | None, db: Session) -> None:
+    if assignee_id is None:
+        return
+    if db.get(User, assignee_id) is None:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Invalid assignee_id.")
 
 
 @router.get("", response_model=list[EntryOut])
@@ -48,16 +67,20 @@ def list_entries(
     start: date | None = Query(default=None, description="Filter: date >= start"),
     end: date | None = Query(default=None, description="Filter: date <= end"),
     sprint_id: int | None = Query(default=None),
-    current_user: User = Depends(get_current_user),
+    assignee_id: int | None = Query(default=None, description="Filter by assignee"),
+    _current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    stmt = select(Entry).where(Entry.owner_id == current_user.id)
+    # Shared workspace: everyone sees all tasks. Filters narrow the view.
+    stmt = select(Entry)
     if start is not None:
         stmt = stmt.where(Entry.entry_date >= start)
     if end is not None:
         stmt = stmt.where(Entry.entry_date <= end)
     if sprint_id is not None:
         stmt = stmt.where(Entry.sprint_id == sprint_id)
+    if assignee_id is not None:
+        stmt = stmt.where(Entry.assignee_id == assignee_id)
     stmt = stmt.order_by(Entry.entry_date, Entry.start_time)
     return [_to_out(e) for e in db.scalars(stmt).all()]
 
@@ -73,10 +96,13 @@ def create_entry(
     except ScheduleRuleError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc))
 
-    _validate_sprint(payload.sprint_id, current_user, db)
+    _validate_sprint(payload.sprint_id, db)
+    _validate_assignee(payload.assignee_id, db)
 
     entry = Entry(
         owner_id=current_user.id,
+        # Unassigned tasks default to the creator.
+        assignee_id=payload.assignee_id or current_user.id,
         title=payload.title,
         description=payload.description,
         entry_date=payload.entry_date,
@@ -97,7 +123,12 @@ def update_entry(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    entry = _get_owned_entry(entry_id, current_user, db)
+    entry = _get_entry(entry_id, db)
+    if not _can_modify(entry, current_user):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Only the creator or the assignee can change this task.",
+        )
 
     new_date = payload.entry_date if payload.entry_date is not None else entry.entry_date
     new_start = payload.start_time if payload.start_time is not None else entry.start_time
@@ -114,7 +145,9 @@ def update_entry(
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc))
 
     if payload.sprint_id is not None:
-        _validate_sprint(payload.sprint_id, current_user, db)
+        _validate_sprint(payload.sprint_id, db)
+    if payload.assignee_id is not None:
+        _validate_assignee(payload.assignee_id, db)
 
     data = payload.model_dump(exclude_unset=True)
     for field, value in data.items():
@@ -131,6 +164,11 @@ def delete_entry(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    entry = _get_owned_entry(entry_id, current_user, db)
+    entry = _get_entry(entry_id, db)
+    if not _can_modify(entry, current_user):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Only the creator or the assignee can delete this task.",
+        )
     db.delete(entry)
     db.commit()

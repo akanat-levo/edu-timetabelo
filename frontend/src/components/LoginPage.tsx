@@ -6,6 +6,9 @@ export default function LoginPage() {
   const [mode, setMode] = useState<"login" | "register">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -17,7 +20,7 @@ export default function LoginPage() {
       if (mode === "login") {
         await login(email, password);
       } else {
-        await register(email, password);
+        await register(email, password, displayName, inviteCode);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
@@ -50,6 +53,18 @@ export default function LoginPage() {
         </div>
 
         <form onSubmit={onSubmit} className="auth-form">
+          {mode === "register" && (
+            <label>
+              Display name
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="e.g. Ashish"
+                autoComplete="name"
+              />
+            </label>
+          )}
           <label>
             Email
             <input
@@ -62,15 +77,38 @@ export default function LoginPage() {
           </label>
           <label>
             Password
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-              autoComplete={mode === "login" ? "current-password" : "new-password"}
-            />
+            <div className="password-field">
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={6}
+                autoComplete={mode === "login" ? "current-password" : "new-password"}
+              />
+              <button
+                type="button"
+                className="toggle-pw"
+                onClick={() => setShowPassword((v) => !v)}
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </div>
           </label>
+
+          {mode === "register" && (
+            <label>
+              Invite code
+              <input
+                type="text"
+                value={inviteCode}
+                onChange={(e) => setInviteCode(e.target.value)}
+                placeholder="Ask your workspace owner"
+                autoComplete="off"
+              />
+            </label>
+          )}
 
           {error && <div className="error">{error}</div>}
 

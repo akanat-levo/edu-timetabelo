@@ -1,0 +1,23 @@
+# Render Blueprint for the FastAPI backend.
+# In Render: New + -> Blueprint -> point at this repo. It reads this file.
+services:
+  - type: web
+    name: edu-timetabelo-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /api/health
+    envVars:
+      # Auto-generated strong secret for signing JWTs.
+      - key: SECRET_KEY
+        generateValue: true
+      # Paste your Neon connection string in the Render dashboard (kept secret).
+      - key: DATABASE_URL
+        sync: false
+      # Shared invite code so only you + friends can register. Set in dashboard.
+      - key: INVITE_CODE
+        sync: false
+      # Allow the browser app to call the API from any origin (token auth).
+      - key: CORS_ORIGINS
+        value: "*"

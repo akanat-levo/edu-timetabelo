@@ -1,16 +1,26 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { api, type Entry, type Rules, type Sprint } from "../api";
+import { api, type Entry, type Rules, type Sprint, type UserPublic } from "../api";
 import { isWeekend, parseISODate } from "../dates";
 
 interface Props {
   date: string; // YYYY-MM-DD
   rules: Rules;
   sprints: Sprint[];
+  users: UserPublic[];
+  currentUserId: number;
   onCreated: (entry: Entry) => void;
   onCancel: () => void;
 }
 
-export default function EntryForm({ date, rules, sprints, onCreated, onCancel }: Props) {
+export default function EntryForm({
+  date,
+  rules,
+  sprints,
+  users,
+  currentUserId,
+  onCreated,
+  onCancel,
+}: Props) {
   const weekend = isWeekend(parseISODate(date));
   const window = weekend ? rules.weekend : rules.weekday;
 
@@ -19,6 +29,7 @@ export default function EntryForm({ date, rules, sprints, onCreated, onCancel }:
   const [startTime, setStartTime] = useState(window.start);
   const [endTime, setEndTime] = useState(window.end);
   const [sprintId, setSprintId] = useState<number | "">("");
+  const [assigneeId, setAssigneeId] = useState<number>(currentUserId);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -51,6 +62,7 @@ export default function EntryForm({ date, rules, sprints, onCreated, onCancel }:
         start_time: startTime,
         end_time: endTime,
         sprint_id: sprintId === "" ? null : Number(sprintId),
+        assignee_id: assigneeId,
       });
       onCreated(entry);
     } catch (err) {
@@ -103,6 +115,20 @@ export default function EntryForm({ date, rules, sprints, onCreated, onCancel }:
               />
             </label>
           </div>
+          <label>
+            Assign to
+            <select
+              value={assigneeId}
+              onChange={(e) => setAssigneeId(Number(e.target.value))}
+            >
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.display_name || u.email}
+                  {u.id === currentUserId ? " (me)" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
           <label>
             Sprint (optional)
             <select

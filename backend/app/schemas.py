@@ -7,6 +7,8 @@ from pydantic import BaseModel, ConfigDict, EmailStr, Field
 class UserCreate(BaseModel):
     email: EmailStr
     password: str = Field(min_length=6, max_length=128)
+    display_name: str = Field(default="", max_length=80)
+    invite_code: str = Field(default="", max_length=128)
 
 
 class UserOut(BaseModel):
@@ -14,7 +16,18 @@ class UserOut(BaseModel):
 
     id: int
     email: EmailStr
+    display_name: str
     created_at: datetime
+
+
+class UserPublic(BaseModel):
+    """Minimal user info shown to the whole workspace."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    email: EmailStr
+    display_name: str
 
 
 class Token(BaseModel):
@@ -30,6 +43,7 @@ class EntryBase(BaseModel):
     start_time: str = Field(description="24h time, 'HH:MM'")
     end_time: str = Field(description="24h time, 'HH:MM'")
     sprint_id: int | None = None
+    assignee_id: int | None = None
 
 
 class EntryCreate(EntryBase):
@@ -44,6 +58,7 @@ class EntryUpdate(BaseModel):
     end_time: str | None = None
     completed: bool | None = None
     sprint_id: int | None = None
+    assignee_id: int | None = None
 
 
 class EntryOut(EntryBase):
@@ -53,6 +68,9 @@ class EntryOut(EntryBase):
     completed: bool
     day_of_week: int
     created_at: datetime
+    owner_id: int
+    creator_name: str
+    assignee_name: str | None
 
 
 # ---- Sprints (weekly / monthly planning periods) ----
@@ -69,11 +87,6 @@ class SprintCreate(SprintBase):
 
 
 class SprintAuto(BaseModel):
-    """Create a sprint by picking a kind + any date inside the desired period.
-
-    The server computes the correct start/end range automatically.
-    """
-
     kind: str = Field(pattern="^(weekly|monthly)$")
     title: str = Field(min_length=1, max_length=200)
     description: str = Field(default="", max_length=2000)
@@ -98,6 +111,32 @@ class SprintProgress(BaseModel):
     sprint: SprintOut
     total: int
     completed: int
+    percent: float
+
+
+class DayProgress(BaseModel):
+    date: date
+    day_of_week: int
+    is_weekend: bool
+    total: int
+    completed: int
+    percent: float
+
+
+class SprintDetail(BaseModel):
+    sprint: SprintOut
+    total: int
+    completed: int
+    percent: float
+    days: list[DayProgress]
+
+
+# ---- Per-person progress ----
+class UserProgress(BaseModel):
+    user: UserPublic
+    total: int
+    completed: int
+    pending: int
     percent: float
 
 

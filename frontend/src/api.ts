@@ -1,5 +1,10 @@
 // Thin typed API client for the FastAPI backend.
 
+// In local dev this is empty and requests hit "/api/..." (proxied by Vite to
+// the backend). In production (Vercel) set VITE_API_BASE to the backend URL,
+// e.g. https://edu-timetabelo-backend.onrender.com
+const API_BASE = (import.meta.env.VITE_API_BASE ?? "").replace(/\/$/, "");
+
 const TOKEN_KEY = "tt_token";
 
 export function getToken(): string | null {
@@ -14,6 +19,20 @@ export function clearToken() {
   localStorage.removeItem(TOKEN_KEY);
 }
 
+export interface UserPublic {
+  id: number;
+  email: string;
+  display_name: string;
+}
+
+export interface UserProgress {
+  user: UserPublic;
+  total: number;
+  completed: number;
+  pending: number;
+  percent: number;
+}
+
 export interface Entry {
   id: number;
   title: string;
@@ -22,9 +41,13 @@ export interface Entry {
   start_time: string; // HH:MM
   end_time: string; // HH:MM
   sprint_id: number | null;
+  assignee_id: number | null;
   completed: boolean;
   day_of_week: number;
   created_at: string;
+  owner_id: number;
+  creator_name: string;
+  assignee_name: string | null;
 }
 
 export interface Sprint {
@@ -42,6 +65,23 @@ export interface SprintProgress {
   total: number;
   completed: number;
   percent: number;
+}
+
+export interface DayProgress {
+  date: string;
+  day_of_week: number;
+  is_weekend: boolean;
+  total: number;
+  completed: number;
+  percent: number;
+}
+
+export interface SprintDetail {
+  sprint: Sprint;
+  total: number;
+  completed: number;
+  percent: number;
+  days: DayProgress[];
 }
 
 export interface DayWindow {
@@ -74,7 +114,7 @@ async function request<T>(
     headers.set("Content-Type", "application/json");
   }
 
-  const res = await fetch(path, { ...options, headers });
+  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
 
   if (res.status === 204) return undefined as T;
 
@@ -91,10 +131,15 @@ async function request<T>(
 
 export const api = {
   // ---- Auth ----
-  async register(email: string, password: string) {
+  async register(
+    email: string,
+    password: string,
+    display_name: string,
+    invite_code: string
+  ) {
     return request<{ access_token: string }>("/api/auth/register", {
       method: "POST",
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, display_name, invite_code }),
     });
   },
 
@@ -111,7 +156,25 @@ export const api = {
   },
 
   async me() {
-    return request<{ id: number; email: string; created_at: string }>("/api/auth/me");
+    return request<{
+      id: number;
+      email: string;
+      display_name: string;
+      created_at: string;
+    }>("/api/auth/me");
+  },
+
+  // ---- Users ----
+  async listUsers() {
+    return request<UserPublic[]>("/api/users");
+  },
+
+  async usersProgress(params: { start?: string; end?: string } = {}) {
+    const q = new URLSearchParams();
+    if (params.start) q.set("start", params.start);
+    if (params.end) q.set("end", params.end);
+    const qs = q.toString();
+    return request<UserProgress[]>(`/api/users/progress${qs ? `?${qs}` : ""}`);
   },
 
   // ---- Rules ----
@@ -120,11 +183,19 @@ export const api = {
   },
 
   // ---- Entries ----
-  async listEntries(params: { start?: string; end?: string; sprint_id?: number } = {}) {
+  async listEntries(
+    params: {
+      start?: string;
+      end?: string;
+      sprint_id?: number;
+      assignee_id?: number;
+    } = {}
+  ) {
     const q = new URLSearchParams();
     if (params.start) q.set("start", params.start);
     if (params.end) q.set("end", params.end);
     if (params.sprint_id != null) q.set("sprint_id", String(params.sprint_id));
+    if (params.assignee_id != null) q.set("assignee_id", String(params.assignee_id));
     const qs = q.toString();
     return request<Entry[]>(`/api/entries${qs ? `?${qs}` : ""}`);
   },
@@ -136,6 +207,7 @@ export const api = {
     start_time: string;
     end_time: string;
     sprint_id: number | null;
+    assignee_id: number | null;
   }) {
     return request<Entry>("/api/entries", {
       method: "POST",
@@ -174,6 +246,10 @@ export const api = {
 
   async sprintProgress(id: number) {
     return request<SprintProgress>(`/api/sprints/${id}/progress`);
+  },
+
+  async sprintBreakdown(id: number) {
+    return request<SprintDetail>(`/api/sprints/${id}/breakdown`);
   },
 
   async deleteSprint(id: number) {

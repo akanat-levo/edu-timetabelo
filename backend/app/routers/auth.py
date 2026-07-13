@@ -9,6 +9,7 @@ from ..auth import (
     hash_password,
     verify_password,
 )
+from ..config import settings
 from ..database import get_db
 from ..models import User
 from ..schemas import Token, UserCreate, UserOut
@@ -18,6 +19,13 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 def register(payload: UserCreate, db: Session = Depends(get_db)):
+    # Optional invite gate: only enforced when INVITE_CODE is configured.
+    if settings.invite_code and payload.invite_code != settings.invite_code:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid or missing invite code.",
+        )
+
     existing = db.scalar(select(User).where(User.email == payload.email))
     if existing:
         raise HTTPException(
@@ -26,6 +34,7 @@ def register(payload: UserCreate, db: Session = Depends(get_db)):
         )
     user = User(
         email=payload.email,
+        display_name=payload.display_name or payload.email.split("@")[0],
         hashed_password=hash_password(payload.password),
     )
     db.add(user)

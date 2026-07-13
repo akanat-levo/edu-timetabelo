@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { api, type Sprint, type SprintProgress } from "../api";
 import { toISODate } from "../dates";
+import SprintDetailModal from "./SprintDetailModal";
 
 interface Props {
   sprints: Sprint[];
@@ -15,6 +16,7 @@ export default function SprintsPanel({ sprints, onChanged }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<Record<number, SprintProgress>>({});
+  const [openSprintId, setOpenSprintId] = useState<number | null>(null);
 
   const loadProgress = useCallback(async () => {
     const results = await Promise.all(
@@ -93,10 +95,21 @@ export default function SprintsPanel({ sprints, onChanged }: Props) {
         {sprints.map((s) => {
           const p = progress[s.id];
           return (
-            <div key={s.id} className={`sprint-card ${s.kind}`}>
+            <div
+              key={s.id}
+              className={`sprint-card clickable ${s.kind}`}
+              onClick={() => setOpenSprintId(s.id)}
+              title="View day-by-day progress"
+            >
               <div className="sprint-top">
                 <span className="badge">{s.kind}</span>
-                <button className="link-btn" onClick={() => remove(s.id)}>
+                <button
+                  className="link-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    remove(s.id);
+                  }}
+                >
                   remove
                 </button>
               </div>
@@ -118,6 +131,13 @@ export default function SprintsPanel({ sprints, onChanged }: Props) {
           );
         })}
       </div>
+
+      {openSprintId != null && (
+        <SprintDetailModal
+          sprintId={openSprintId}
+          onClose={() => setOpenSprintId(null)}
+        />
+      )}
     </aside>
   );
 }

@@ -11,11 +11,20 @@ class User(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String, unique=True, index=True, nullable=False)
+    display_name: Mapped[str] = mapped_column(String, default="")
     hashed_password: Mapped[str] = mapped_column(String, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
-    entries: Mapped[list["Entry"]] = relationship(
-        back_populates="owner", cascade="all, delete-orphan"
+    # Tasks this user created.
+    created_entries: Mapped[list["Entry"]] = relationship(
+        back_populates="creator",
+        foreign_keys="Entry.owner_id",
+        cascade="all, delete-orphan",
+    )
+    # Tasks assigned to this user (may have been created by someone else).
+    assigned_entries: Mapped[list["Entry"]] = relationship(
+        back_populates="assignee",
+        foreign_keys="Entry.assignee_id",
     )
     sprints: Mapped[list["Sprint"]] = relationship(
         back_populates="owner", cascade="all, delete-orphan"
@@ -26,6 +35,7 @@ class Sprint(Base):
     """A planning period grouping tasks over a date range.
 
     kind is "weekly" or "monthly". The date range is inclusive.
+    Sprints are visible to the whole workspace.
     """
 
     __tablename__ = "sprints"
@@ -49,13 +59,20 @@ class Sprint(Base):
 
 
 class Entry(Base):
-    """A scheduled task on a specific calendar date."""
+    """A scheduled task on a specific calendar date.
+
+    owner_id  = who created the task.
+    assignee_id = who is responsible for it (defaults to the creator).
+    """
 
     __tablename__ = "entries"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     owner_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=False
+    )
+    assignee_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True
     )
     sprint_id: Mapped[int | None] = mapped_column(
         ForeignKey("sprints.id", ondelete="SET NULL"), index=True, nullable=True
@@ -75,5 +92,10 @@ class Entry(Base):
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
-    owner: Mapped["User"] = relationship(back_populates="entries")
+    creator: Mapped["User"] = relationship(
+        back_populates="created_entries", foreign_keys=[owner_id]
+    )
+    assignee: Mapped["User | None"] = relationship(
+        back_populates="assigned_entries", foreign_keys=[assignee_id]
+    )
     sprint: Mapped["Sprint | None"] = relationship(back_populates="entries")

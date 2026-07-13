@@ -17,5 +17,9 @@ class Settings(BaseSettings):
     # CORS: comma separated list of allowed origins, or "*" for all.
     cors_origins: str = "*"
 
+    # If set, new users must supply this exact code to register.
+    # Leave empty to allow open registration (fine for local dev).
+    invite_code: str = ""
+
 
 settings = Settings()

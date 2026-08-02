@@ -821,3 +821,22 @@ select:focus {
 .add-task-btn .icon {
   stroke-width: 2.5;
 }
+
+/* ---- 12-hour time picker ---- */
+.time-picker {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.time-picker select {
+  padding: 10px 8px;
+  text-align: center;
+  cursor: pointer;
+}
+.time-picker .tp-ampm {
+  font-weight: 600;
+}
+.time-picker .tp-colon {
+  font-weight: 700;
+  color: var(--muted);
+}

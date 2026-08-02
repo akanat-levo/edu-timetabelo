@@ -4,6 +4,7 @@ import {
   DAY_NAMES,
   addDays,
   formatRange,
+  formatTime12,
   isWeekend,
   toISODate,
   weekDays,
@@ -167,7 +168,7 @@ export default function WeekView({
                 {dayEntries.map((e) => (
                   <div key={e.id} className={`entry ${e.completed ? "done" : ""}`}>
                     <div className="entry-time">
-                      {e.start_time}–{e.end_time}
+                      {formatTime12(e.start_time)} – {formatTime12(e.end_time)}
                     </div>
                     <div className="entry-title">{e.title}</div>
                     {e.assignee_name && (

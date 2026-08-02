@@ -1,6 +1,7 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { api, type Entry, type Rules, type Sprint, type UserPublic } from "../api";
 import { isWeekend, parseISODate } from "../dates";
+import TimePicker from "./TimePicker";
 
 interface Props {
   date: string; // YYYY-MM-DD
@@ -97,25 +98,11 @@ export default function EntryForm({
           <div className="row">
             <label>
               Start
-              <input
-                type="time"
-                value={startTime}
-                min={window.start}
-                max={window.end}
-                onChange={(e) => setStartTime(e.target.value)}
-                required
-              />
+              <TimePicker value={startTime} onChange={setStartTime} />
             </label>
             <label>
               End
-              <input
-                type="time"
-                value={endTime}
-                min={window.start}
-                max={window.end}
-                onChange={(e) => setEndTime(e.target.value)}
-                required
-              />
+              <TimePicker value={endTime} onChange={setEndTime} />
             </label>
           </div>
           <label>

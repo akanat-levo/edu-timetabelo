@@ -840,3 +840,66 @@ select:focus {
   font-weight: 700;
   color: var(--muted);
 }
+
+/* ---- Editable task cards ---- */
+.entry.editable {
+  cursor: pointer;
+}
+.entry.editable:hover {
+  border-color: var(--accent);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ---- Copy day button in day header ---- */
+.day-head-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.copy-day-btn {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--muted);
+}
+.copy-day-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+}
+.copy-day-btn .icon {
+  width: 13px;
+  height: 13px;
+}
+
+/* ---- Copy day modal ---- */
+.copy-day-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.copy-day-option {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-weight: 500;
+  color: var(--text);
+}
+.copy-day-option:hover {
+  border-color: var(--accent);
+}
+.copy-day-option input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}

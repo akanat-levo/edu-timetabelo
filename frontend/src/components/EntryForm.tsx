@@ -9,7 +9,8 @@ interface Props {
   sprints: Sprint[];
   users: UserPublic[];
   currentUserId: number;
-  onCreated: (entry: Entry) => void;
+  entry?: Entry; // when present, the form edits this task instead of creating
+  onSaved: (entry: Entry) => void;
   onCancel: () => void;
 }
 
@@ -19,19 +20,27 @@ export default function EntryForm({
   sprints,
   users,
   currentUserId,
-  onCreated,
+  entry,
+  onSaved,
   onCancel,
 }: Props) {
+  const editing = !!entry;
   const weekend = isWeekend(parseISODate(date));
   const window = weekend ? rules.weekend : rules.weekday;
   const fullDay = window.start === "00:00" && window.end === "23:59";
 
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [startTime, setStartTime] = useState(fullDay ? "09:00" : window.start);
-  const [endTime, setEndTime] = useState(fullDay ? "10:00" : window.end);
-  const [sprintId, setSprintId] = useState<number | "">("");
-  const [assigneeId, setAssigneeId] = useState<number>(currentUserId);
+  const [title, setTitle] = useState(entry?.title ?? "");
+  const [description, setDescription] = useState(entry?.description ?? "");
+  const [startTime, setStartTime] = useState(
+    entry?.start_time ?? (fullDay ? "09:00" : window.start)
+  );
+  const [endTime, setEndTime] = useState(
+    entry?.end_time ?? (fullDay ? "10:00" : window.end)
+  );
+  const [sprintId, setSprintId] = useState<number | "">(entry?.sprint_id ?? "");
+  const [assigneeId, setAssigneeId] = useState<number>(
+    entry?.assignee_id ?? currentUserId
+  );
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -59,18 +68,31 @@ export default function EntryForm({
 
     setBusy(true);
     try {
-      const entry = await api.createEntry({
-        title,
-        description,
-        entry_date: date,
-        start_time: startTime,
-        end_time: endTime,
-        sprint_id: sprintId === "" ? null : Number(sprintId),
-        assignee_id: assigneeId,
-      });
-      onCreated(entry);
+      const sprint_id = sprintId === "" ? null : Number(sprintId);
+      let saved: Entry;
+      if (editing && entry) {
+        saved = await api.updateEntry(entry.id, {
+          title,
+          description,
+          start_time: startTime,
+          end_time: endTime,
+          sprint_id,
+          assignee_id: assigneeId,
+        });
+      } else {
+        saved = await api.createEntry({
+          title,
+          description,
+          entry_date: date,
+          start_time: startTime,
+          end_time: endTime,
+          sprint_id,
+          assignee_id: assigneeId,
+        });
+      }
+      onSaved(saved);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create entry.");
+      setError(err instanceof Error ? err.message : "Could not save task.");
     } finally {
       setBusy(false);
     }
@@ -79,7 +101,9 @@ export default function EntryForm({
   return (
     <div className="modal-backdrop" onClick={onCancel}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h3>New task · {date}</h3>
+        <h3>
+          {editing ? "Edit task" : "New task"} · {date}
+        </h3>
         <p className="muted small">{hint}</p>
 
         <form onSubmit={onSubmit} className="stack">
@@ -143,7 +167,7 @@ export default function EntryForm({
               Cancel
             </button>
             <button type="submit" className="primary" disabled={busy}>
-              {busy ? "Saving…" : "Add task"}
+              {busy ? "Saving…" : editing ? "Save changes" : "Add task"}
             </button>
           </div>
         </form>

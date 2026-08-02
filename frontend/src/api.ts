@@ -226,6 +226,13 @@ export const api = {
     return request<void>(`/api/entries/${id}`, { method: "DELETE" });
   },
 
+  async copyDay(source_date: string, target_dates: string[]) {
+    return request<Entry[]>("/api/entries/copy", {
+      method: "POST",
+      body: JSON.stringify({ source_date, target_dates }),
+    });
+  },
+
   // ---- Sprints ----
   async listSprints(kind?: "weekly" | "monthly") {
     const qs = kind ? `?kind=${kind}` : "";

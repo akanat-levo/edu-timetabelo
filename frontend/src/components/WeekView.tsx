@@ -6,9 +6,11 @@ import {
   formatRange,
   formatTime12,
   isWeekend,
+  parseISODate,
   toISODate,
   weekDays,
 } from "../dates";
+import CopyDayModal, { type DayOption } from "./CopyDayModal";
 import EntryForm from "./EntryForm";
 
 interface Props {
@@ -30,6 +32,8 @@ export default function WeekView({
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(true);
   const [formDate, setFormDate] = useState<string | null>(null);
+  const [editEntry, setEditEntry] = useState<Entry | null>(null);
+  const [copyFrom, setCopyFrom] = useState<string | null>(null);
   const [personFilter, setPersonFilter] = useState<number | "all">("all");
 
   const days = useMemo(() => weekDays(anchor), [anchor]);
@@ -161,37 +165,73 @@ export default function WeekView({
             >
               <div className="day-head">
                 <span className="day-name">{DAY_NAMES[i].slice(0, 3)}</span>
-                <span className="day-num">{day.getDate()}</span>
+                <div className="day-head-right">
+                  {dayEntries.length > 0 && (
+                    <button
+                      className="copy-day-btn"
+                      title="Copy this day's tasks to other days"
+                      onClick={() => setCopyFrom(iso)}
+                    >
+                      <svg viewBox="0 0 24 24" className="icon" aria-hidden="true">
+                        <rect x="9" y="9" width="11" height="11" rx="2" />
+                        <path d="M5 15V5a2 2 0 0 1 2-2h10" />
+                      </svg>
+                    </button>
+                  )}
+                  <span className="day-num">{day.getDate()}</span>
+                </div>
               </div>
 
               <div className="day-body">
-                {dayEntries.map((e) => (
-                  <div key={e.id} className={`entry ${e.completed ? "done" : ""}`}>
-                    <div className="entry-time">
-                      {formatTime12(e.start_time)} – {formatTime12(e.end_time)}
+                {dayEntries.map((e) => {
+                  const canModify =
+                    e.owner_id === currentUserId || e.assignee_id === currentUserId;
+                  return (
+                    <div
+                      key={e.id}
+                      className={`entry ${e.completed ? "done" : ""} ${
+                        canModify ? "editable" : ""
+                      }`}
+                      onClick={canModify ? () => setEditEntry(e) : undefined}
+                      title={canModify ? "Click to edit" : undefined}
+                    >
+                      <div className="entry-time">
+                        {formatTime12(e.start_time)} – {formatTime12(e.end_time)}
+                      </div>
+                      <div className="entry-title">{e.title}</div>
+                      {e.assignee_name && (
+                        <div className="entry-assignee" title="Assigned to">
+                          <span className="avatar">
+                            {e.assignee_name.charAt(0).toUpperCase()}
+                          </span>
+                          {e.assignee_name}
+                        </div>
+                      )}
+                      {canModify && (
+                        <div className="entry-actions">
+                          <button
+                            title="Toggle done"
+                            onClick={(ev) => {
+                              ev.stopPropagation();
+                              toggle(e);
+                            }}
+                          >
+                            {e.completed ? "↺" : "✓"}
+                          </button>
+                          <button
+                            title="Delete"
+                            onClick={(ev) => {
+                              ev.stopPropagation();
+                              remove(e);
+                            }}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      )}
                     </div>
-                    <div className="entry-title">{e.title}</div>
-                    {e.assignee_name && (
-                      <div className="entry-assignee" title="Assigned to">
-                        <span className="avatar">
-                          {e.assignee_name.charAt(0).toUpperCase()}
-                        </span>
-                        {e.assignee_name}
-                      </div>
-                    )}
-                    {(e.owner_id === currentUserId ||
-                      e.assignee_id === currentUserId) && (
-                      <div className="entry-actions">
-                        <button title="Toggle done" onClick={() => toggle(e)}>
-                          {e.completed ? "↺" : "✓"}
-                        </button>
-                        <button title="Delete" onClick={() => remove(e)}>
-                          ✕
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               <button className="add-btn" onClick={() => setFormDate(iso)}>
@@ -204,17 +244,50 @@ export default function WeekView({
 
       {loading && <p className="muted small">Loading…</p>}
 
-      {formDate && (
+      {(formDate || editEntry) && (
         <EntryForm
-          date={formDate}
+          date={editEntry ? editEntry.entry_date : formDate!}
+          entry={editEntry ?? undefined}
           rules={rules}
           sprints={sprints}
           users={users}
           currentUserId={currentUserId}
-          onCancel={() => setFormDate(null)}
-          onCreated={(entry) => {
-            setEntries((prev) => [...prev, entry]);
+          onCancel={() => {
             setFormDate(null);
+            setEditEntry(null);
+          }}
+          onSaved={(saved) => {
+            setEntries((prev) => {
+              const exists = prev.some((e) => e.id === saved.id);
+              return exists
+                ? prev.map((e) => (e.id === saved.id ? saved : e))
+                : [...prev, saved];
+            });
+            setFormDate(null);
+            setEditEntry(null);
+            onDataChanged();
+          }}
+        />
+      )}
+
+      {copyFrom && (
+        <CopyDayModal
+          sourceDate={copyFrom}
+          sourceLabel={
+            DAY_NAMES[(parseISODate(copyFrom).getDay() + 6) % 7]
+          }
+          taskCount={(byDate[copyFrom] || []).length}
+          dayOptions={days.map(
+            (d, i): DayOption => ({
+              iso: toISODate(d),
+              label: DAY_NAMES[i],
+              num: d.getDate(),
+            })
+          )}
+          onCancel={() => setCopyFrom(null)}
+          onDone={() => {
+            setCopyFrom(null);
+            load();
             onDataChanged();
           }}
         />

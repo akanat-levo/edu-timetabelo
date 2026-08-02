@@ -114,6 +114,11 @@ class SprintProgress(BaseModel):
     percent: float
 
 
+class CopyDayRequest(BaseModel):
+    source_date: date
+    target_dates: list[date]
+
+
 class DayProgress(BaseModel):
     date: date
     day_of_week: int

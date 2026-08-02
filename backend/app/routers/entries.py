@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from ..auth import get_current_user
 from ..database import get_db
 from ..models import Entry, Sprint, User
-from ..schemas import EntryCreate, EntryOut, EntryUpdate
+from ..schemas import CopyDayRequest, EntryCreate, EntryOut, EntryUpdate
 from ..time_rules import ScheduleRuleError, validate_entry
 
 router = APIRouter(prefix="/api/entries", tags=["entries"])
@@ -114,6 +114,46 @@ def create_entry(
     db.commit()
     db.refresh(entry)
     return _to_out(entry)
+
+
+@router.post("/copy", response_model=list[EntryOut], status_code=status.HTTP_201_CREATED)
+def copy_day(
+    payload: CopyDayRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Duplicate every task on source_date onto each target date.
+
+    Copies keep their title, times, assignee and sprint, but are marked not
+    completed and owned by whoever performs the copy.
+    """
+    sources = db.scalars(
+        select(Entry).where(Entry.entry_date == payload.source_date)
+    ).all()
+
+    created: list[Entry] = []
+    for target in payload.target_dates:
+        if target == payload.source_date:
+            continue  # skip copying a day onto itself
+        for src in sources:
+            copy = Entry(
+                owner_id=current_user.id,
+                assignee_id=src.assignee_id,
+                title=src.title,
+                description=src.description,
+                entry_date=target,
+                start_time=src.start_time,
+                end_time=src.end_time,
+                sprint_id=src.sprint_id,
+                completed=False,
+            )
+            db.add(copy)
+            created.append(copy)
+
+    db.commit()
+    for c in created:
+        db.refresh(c)
+    return [_to_out(c) for c in created]
 
 
 @router.patch("/{entry_id}", response_model=EntryOut)

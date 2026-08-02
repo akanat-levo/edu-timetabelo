@@ -7,6 +7,11 @@ backend/data/
 *.db
 .env
 
+# Local secrets / scratch notes (never commit these)
+env.txt
+*.secret
+secrets*.txt
+
 # Node
 node_modules/
 frontend/dist/

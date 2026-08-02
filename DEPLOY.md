@@ -15,11 +15,11 @@ Vercel and Render deploy from a Git repo, so the code needs to be on GitHub.
 ```bash
 cd ~/edu-timetabelo
 git add .
-git commit -m "Deploy: Postgres support, invite gate, Vercel/Render config"
+    git commit -m "Deploy: Postgres support, invite gate, Vercel/Render config"
 # Create an empty repo on github.com first, then:
 git branch -M main
 git remote add origin https://github.com/<your-username>/edu-timetabelo.git
-git push -u origin main
+    git push -u origin main
 ```
 
 ---

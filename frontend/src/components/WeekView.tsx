@@ -86,10 +86,7 @@ export default function WeekView({
       <div className="week-header">
         <div>
           <h2>Week of {formatRange(rangeStart, rangeEnd)}</h2>
-          <p className="muted small">
-            Weekdays {rules.weekday.start}–{rules.weekday.end} · Weekends{" "}
-            {rules.weekend.start}–{rules.weekend.end}
-          </p>
+          <p className="muted small">Schedule tasks any time, any day</p>
         </div>
 
         <div className="toolbar">

@@ -21,8 +21,9 @@ class TimeWindow:
     end: str    # "HH:MM"
 
 
-WEEKDAY_WINDOW = TimeWindow(start="19:00", end="23:00")
-WEEKEND_WINDOW = TimeWindow(start="10:00", end="17:00")
+# Full-day scheduling: tasks can be placed at any time on any day.
+WEEKDAY_WINDOW = TimeWindow(start="00:00", end="23:59")
+WEEKEND_WINDOW = TimeWindow(start="00:00", end="23:59")
 
 WEEKEND_DAYS = {5, 6}  # Saturday, Sunday (Python weekday convention)
 

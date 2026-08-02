@@ -23,11 +23,12 @@ export default function EntryForm({
 }: Props) {
   const weekend = isWeekend(parseISODate(date));
   const window = weekend ? rules.weekend : rules.weekday;
+  const fullDay = window.start === "00:00" && window.end === "23:59";
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [startTime, setStartTime] = useState(window.start);
-  const [endTime, setEndTime] = useState(window.end);
+  const [startTime, setStartTime] = useState(fullDay ? "09:00" : window.start);
+  const [endTime, setEndTime] = useState(fullDay ? "10:00" : window.end);
   const [sprintId, setSprintId] = useState<number | "">("");
   const [assigneeId, setAssigneeId] = useState<number>(currentUserId);
   const [error, setError] = useState<string | null>(null);
@@ -35,8 +36,10 @@ export default function EntryForm({
 
   const hint = useMemo(
     () =>
-      `${weekend ? "Weekend" : "Weekday"}: allowed ${window.start}–${window.end}`,
-    [weekend, window]
+      fullDay
+        ? "Any time of day"
+        : `${weekend ? "Weekend" : "Weekday"}: allowed ${window.start}–${window.end}`,
+    [fullDay, weekend, window]
   );
 
   async function onSubmit(e: FormEvent) {

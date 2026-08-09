@@ -43,6 +43,7 @@ export interface Entry {
   sprint_id: number | null;
   assignee_id: number | null;
   completed: boolean;
+  status: string; // "pending", "completed", "cancelled"
   day_of_week: number;
   created_at: string;
   owner_id: number;
@@ -231,6 +232,13 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ source_date, target_dates }),
     });
+  },
+
+  async checkOverdueTasksEmailReminders() {
+    return request<{ message: string; tasks_checked: number; emails_sent: number }>(
+      "/api/entries/check-overdue",
+      { method: "POST" }
+    );
   },
 
   // ---- Sprints ----

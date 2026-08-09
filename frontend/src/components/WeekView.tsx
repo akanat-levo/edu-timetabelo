@@ -74,7 +74,11 @@ export default function WeekView({
 
   async function remove(entry: Entry) {
     await api.deleteEntry(entry.id);
-    setEntries((prev) => prev.filter((e) => e.id !== entry.id));
+    setEntries((prev) =>
+      prev.map((e) =>
+        e.id === entry.id ? { ...e, status: "cancelled" } : e
+      )
+    );
     onDataChanged();
   }
 
@@ -190,8 +194,8 @@ export default function WeekView({
                     <div
                       key={e.id}
                       className={`entry ${e.completed ? "done" : ""} ${
-                        canModify ? "editable" : ""
-                      }`}
+                        e.status === "cancelled" ? "cancelled" : ""
+                      } ${canModify ? "editable" : ""}`}
                       onClick={canModify ? () => setEditEntry(e) : undefined}
                       title={canModify ? "Click to edit" : undefined}
                     >

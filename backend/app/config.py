@@ -21,5 +21,13 @@ class Settings(BaseSettings):
     # Leave empty to allow open registration (fine for local dev).
     invite_code: str = ""
 
+    # Email configuration for sending task reminders
+    smtp_server: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_username: str = ""
+    smtp_password: str = ""
+    smtp_from_email: str = ""
+    smtp_enabled: bool = False
+
 
 settings = Settings()

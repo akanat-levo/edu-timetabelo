@@ -89,6 +89,8 @@ class Entry(Base):
     end_time: Mapped[str] = mapped_column(String, nullable=False)
 
     completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    status: Mapped[str] = mapped_column(String, default="pending")  # "pending", "completed", "cancelled"
+    overdue_notified: Mapped[bool] = mapped_column(Boolean, default=False)
 
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 

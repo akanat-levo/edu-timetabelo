@@ -1,7 +1,7 @@
-from datetime import date
+from datetime import date, datetime, time as datetime_time, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import and_, select
 from sqlalchemy.orm import Session
 
 from ..auth import get_current_user
@@ -9,6 +9,7 @@ from ..database import get_db
 from ..models import Entry, Sprint, User
 from ..schemas import CopyDayRequest, EntryCreate, EntryOut, EntryUpdate
 from ..time_rules import ScheduleRuleError, validate_entry
+from ..email_service import send_overdue_task_email
 
 router = APIRouter(prefix="/api/entries", tags=["entries"])
 
@@ -24,6 +25,7 @@ def _to_out(entry: Entry) -> EntryOut:
         sprint_id=entry.sprint_id,
         assignee_id=entry.assignee_id,
         completed=entry.completed,
+        status=entry.status,
         day_of_week=entry.entry_date.weekday(),
         created_at=entry.created_at,
         owner_id=entry.owner_id,
@@ -210,5 +212,55 @@ def delete_entry(
             status.HTTP_403_FORBIDDEN,
             "Only the creator or the assignee can delete this task.",
         )
-    db.delete(entry)
+    entry.status = "cancelled"
     db.commit()
+
+
+@router.post("/check-overdue", status_code=status.HTTP_200_OK)
+def check_overdue_tasks(db: Session = Depends(get_db)):
+    """Check for overdue incomplete tasks and send email notifications.
+
+    This endpoint should be called periodically (e.g., via a cron job).
+    """
+    now = datetime.now()
+
+    # Find all incomplete tasks where the end_time has passed today
+    # and the notification hasn't been sent yet
+    incomplete_entries = db.scalars(
+        select(Entry).where(
+            and_(
+                Entry.entry_date == date.today(),
+                Entry.completed == False,
+                Entry.status == "pending",
+                Entry.overdue_notified == False,
+            )
+        )
+    ).all()
+
+    sent_count = 0
+    for entry in incomplete_entries:
+        # Parse the end_time and check if it has passed
+        end_hour, end_min = map(int, entry.end_time.split(":"))
+        end_datetime = datetime.combine(
+            entry.entry_date,
+            datetime_time(end_hour, end_min)
+        )
+
+        if now >= end_datetime:
+            # Send email to assignee
+            if entry.assignee:
+                if send_overdue_task_email(
+                    entry.assignee.email,
+                    entry.title,
+                    entry.entry_date.isoformat(),
+                    entry.end_time
+                ):
+                    entry.overdue_notified = True
+                    sent_count += 1
+
+    db.commit()
+    return {
+        "message": "Overdue check completed",
+        "tasks_checked": len(incomplete_entries),
+        "emails_sent": sent_count
+    }

@@ -376,6 +376,16 @@ select:focus {
   text-decoration: line-through;
   color: var(--muted);
 }
+.entry.cancelled {
+  background: #fce7e7;
+  border-color: #e8c3c1;
+  border-left-color: #d1544f;
+  opacity: 0.75;
+}
+.entry.cancelled .entry-title {
+  text-decoration: line-through;
+  color: #8b7a79;
+}
 .entry-time {
   font-size: 0.72rem;
   font-weight: 600;
@@ -420,6 +430,10 @@ select:focus {
   border-color: var(--accent);
   color: var(--accent-strong);
   background: var(--accent-soft);
+}
+.day.weekend .add-btn {
+  pointer-events: auto;
+  cursor: pointer;
 }
 
 /* ---- Side column ---- */

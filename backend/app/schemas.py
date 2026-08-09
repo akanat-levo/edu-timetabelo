@@ -57,6 +57,7 @@ class EntryUpdate(BaseModel):
     start_time: str | None = None
     end_time: str | None = None
     completed: bool | None = None
+    status: str | None = Field(default=None, pattern="^(pending|completed|cancelled)$")
     sprint_id: int | None = None
     assignee_id: int | None = None
 
@@ -66,6 +67,7 @@ class EntryOut(EntryBase):
 
     id: int
     completed: bool
+    status: str
     day_of_week: int
     created_at: datetime
     owner_id: int

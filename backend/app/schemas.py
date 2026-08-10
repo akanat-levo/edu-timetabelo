@@ -67,7 +67,7 @@ class EntryOut(EntryBase):
 
     id: int
     completed: bool
-    status: str
+    status: str = "pending"
     day_of_week: int
     created_at: datetime
     owner_id: int

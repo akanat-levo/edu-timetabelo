@@ -25,7 +25,7 @@ def _to_out(entry: Entry) -> EntryOut:
         sprint_id=entry.sprint_id,
         assignee_id=entry.assignee_id,
         completed=entry.completed,
-        status=entry.status,
+        status=getattr(entry, "status", "pending"),
         day_of_week=entry.entry_date.weekday(),
         created_at=entry.created_at,
         owner_id=entry.owner_id,
